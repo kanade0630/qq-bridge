@@ -1,0 +1,3 @@
+name: QQ 聊天角色（私聊仿真）
+description: 私聊场景仿真（qq-chat-personal）：由 qq-chat-v2 改编——任何私聊消息默认唤醒、无沉睡前观察、记忆与主动开口权重更高，另含隐私不外流与防助理化约束；安全边界与工具面同 qq-chat-v2。
+order: 12

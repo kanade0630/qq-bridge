@@ -22,7 +22,7 @@ const BASE = DISCOVERED.baseUrl || CONFIGURED || 'http://127.0.0.1:3080';
 if (DISCOVERED.baseUrl && CONFIGURED && DISCOVERED.baseUrl !== CONFIGURED) {
   console.log(`🔄 DSH 端点已自动校正：${CONFIGURED} → ${DISCOVERED.baseUrl}`);
 }
-const WANTED = ['qq-chat', 'qq-chat-v2'];
+const WANTED = ['qq-chat', 'qq-chat-v2', 'qq-chat-personal'];
 
 let failed = 0;
 function check(label, ok, detail = '') {

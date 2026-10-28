@@ -127,6 +127,9 @@
       "getMessageDetail": true,
       "getActiveMembers": true,
       "setWakeConfig": true,
+      "scheduleTask": true,
+      "listScheduledTasks": true,
+      "cancelScheduledTask": true,
       "markRead": true,
       "memory": true,
       "slangQuery": true,
@@ -205,6 +208,13 @@
       "defaultQuietMs": 8000,
       "minQuietAfterNewMs": 10000
     },
+    "schedule": {
+      "enabled": true,
+      "maxTasksPerSession": 20,
+      "minDelayMs": 10000,
+      "maxFireAheadMs": 2592000000,
+      "maxNoteChars": 500
+    },
     "sticker": {
       "enabled": true,
       "syncTtlMs": 60000,
@@ -257,6 +267,14 @@
       "maxPixels": 64000000,
       "maxCount": 5
     }
+  },
+  "socialPersonal": {
+    "agentPreset": "qq-chat-personal",
+    "preSleepWaitMs": 120000
+  },
+  "nekowhaleStickers": {
+    "enabled": true,
+    "baseUrl": "https://kiriyuki.com"
   },
   "webSearch": {
     "provider": "auto",

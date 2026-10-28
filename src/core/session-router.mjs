@@ -40,7 +40,7 @@
  */
 
 /** Simulation is the safe default: no local tools, whitelist-gated. */
-const SIMULATION_MODES = Object.freeze(['chat', 'reserved', 'reserved2']);
+const SIMULATION_MODES = Object.freeze(['chat', 'reserved', 'reserved2', 'personal']);
 
 /**
  * Accepted mode spellings.
@@ -56,6 +56,7 @@ const MODE_ALIASES = Object.freeze({
   chat: 'chat',
   reserved: 'reserved',
   reserved2: 'reserved2',
+  personal: 'personal',
   'closed-agent': 'closed-agent',
 });
 
@@ -87,6 +88,8 @@ const DEFAULT_MODE_PRESETS = Object.freeze({
   // canonical preset names; `qq-chat-v2` stays accepted because that is the
   // preset the still-legacy bridge actually installs for this mode.
   simulation: Object.freeze(['qsh-sim', 'qsh-sim-v2', 'qq-chat-v2']),
+  // `personal`（私聊仿真）：v2 机制的私聊人设变体，只允许它自己的 preset。
+  personal: Object.freeze(['qq-chat-personal']),
   'closed-agent': Object.freeze(['qsh-closed']),
 });
 
@@ -109,11 +112,12 @@ function buildModePresets(overrides = {}) {
   return Object.freeze(out);
 }
 
-/** Legacy mode -> canonical QSH mode (ADR 0003 / QSH_PLAN.md §2.1). */
+/** Mode -> canonical QSH mode (ADR 0003 / QSH_PLAN.md §2.1). `personal` 也折叠到 simulation：工具面/权限与二代相同。 */
 export const LEGACY_TO_CANONICAL = Object.freeze({
   chat: 'simulation',
   reserved: 'simulation',
   reserved2: 'simulation',
+  personal: 'simulation',
   'closed-agent': 'closed-agent',
   simulation: 'simulation',
 });

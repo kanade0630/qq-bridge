@@ -60,13 +60,15 @@ let oldRejected = false;
 try { persona.Config({ text: 'x' }); } catch { oldRejected = true; }
 check('dsh-persona 仍拒绝旧字段 text（故障前提成立）', oldRejected);
 
-for (const p of ['qq-chat', 'qq-chat-v2']) {
+for (const p of ['qq-chat', 'qq-chat-v2', 'qq-chat-personal']) {
   const f = path.join(ROOT, 'dsh/agent-presets', p, 'agent.cordis.yml');
   const row = yaml.load(fs.readFileSync(f, 'utf8')).find((r) => r.id === 'persona');
   let schemaOk = false;
   try { persona.Config(row.config); schemaOk = true; } catch {}
   check(`preset ${p}: persona.config 通过 DSH schema`, schemaOk);
-  check(`preset ${p}: 保留 {{model}} / {{cwd}} 变量`, /\{\{model\}\}/.test(row.config.prefix) && /\{\{cwd\}\}/.test(row.config.suffix ?? ''));
+  // issue #39：{{cwd}} 只在 deployment:persona-suffix 注册，写进 suffix 会让整个回合以
+  // unknown prompt variable 失败——三个 preset 都刻意不设 suffix，这里钉住别再加回去。
+  check(`preset ${p}: 保留 {{model}} 且不设 suffix（issue #39）`, /\{\{model\}\}/.test(row.config.prefix) && !row.config.suffix);
 }
 
 // ── 2. 部署侧：DSH 0.1.7 的 preset 机制 ──────────────────────────────────────
@@ -82,7 +84,7 @@ const presetPatches = await import(pathToFileURL(path.join(ROOT, 'scripts/build-
 for (const { file, changed } of presetPatches.buildPatches({ check: true, log: () => {} })) {
   check(`${path.relative(ROOT, file)} 与仓库源一致（未漂移）`, !changed);
 }
-for (const p of ['qq-chat', 'qq-chat-v2']) {
+for (const p of ['qq-chat', 'qq-chat-v2', 'qq-chat-personal']) {
   const doc = yaml.load(fs.readFileSync(presetPatches.patchFileFor(p), 'utf8'));
   const row = doc?.[0]?.insert?.[0];
   check(`patch ${p}: 是 @deepseek-ai/dsh-agent-preset 行`, row?.name === '@deepseek-ai/dsh-agent-preset');

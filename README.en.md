@@ -80,7 +80,7 @@ Or double-click `start.bat` on Windows (guard mode with auto-restart).
 
 ## DSH Setup on Another Device
 
-The bridge and console can run without extra DSH setup, but the two DSH chat presets (`qq-chat` and `qq-chat-v2`) and the MCP servers must be installed into DSH once per machine:
+The bridge and console can run without extra DSH setup, but the three DSH chat presets (`qq-chat`, `qq-chat-v2` and `qq-chat-personal`) and the MCP servers must be installed into DSH once per machine:
 
 ```bash
 node scripts/setup-dsh.mjs
@@ -88,7 +88,7 @@ node scripts/setup-dsh.mjs
 
 This installs:
 
-- the `qq-agent-presets` bundle, which generates the two `@deepseek-ai/dsh-agent-preset` rows (`qq-chat`, `qq-chat-v2`) plus the shared `qq-tool-restrict` safety guard
+- the `qq-agent-presets` bundle, which generates the three `@deepseek-ai/dsh-agent-preset` rows (`qq-chat`, `qq-chat-v2`, `qq-chat-personal`) plus the shared `qq-tool-restrict` safety guard
 - MCP entries in `~/.dsh/profiles/web/cordis.patch.yml`
 - `qq-mode-console` and `qq-agent-presets` in the profile `package.json` (`bundles` + `link:` dependencies)
 - Default DSH mode set to `reserved2` (second-generation simulation), with a local `state/mode.json` fallback
@@ -116,8 +116,8 @@ qq-bridge/
     research/           # investigation notes
     audits/             # review / optimisation reports
     legacy/             # archived docs that were superseded
-  dsh/agent-presets/    # qq-chat / qq-chat-v2 DSH agent preset templates
-  plugins/qq-agent-presets  # DSH bundle: generates the qq-chat / qq-chat-v2 preset patch rows + the shared tool guard
+  dsh/agent-presets/    # qq-chat / qq-chat-v2 / qq-chat-personal DSH agent preset templates
+  plugins/qq-agent-presets  # DSH bundle: generates the three preset patch rows + the shared tool guard
   plugins/qq-mode-console  # DSH plugin: exposes the qq-mode settings namespace (host half only; no UI card yet)
   src/                  # bridge core and MCP servers
   public/

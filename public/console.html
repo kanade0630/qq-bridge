@@ -1804,6 +1804,7 @@ button:active:not(:disabled) {
         <button data-mode="closed-agent" aria-pressed="false"><span class="mode-indicator" aria-hidden="true"></span><strong>封闭 Agent</strong><small>仅管理员，完整工具</small></button>
         <button data-mode="reserved" aria-pressed="false"><span class="mode-indicator" aria-hidden="true"></span><strong>一代仿真</strong><small>按策略自然参与群聊</small></button>
         <button data-mode="reserved2" aria-pressed="false"><span class="mode-indicator" aria-hidden="true"></span><strong>二代仿真</strong><small>自主阅读、发言与潜水</small></button>
+        <button data-mode="personal" aria-pressed="false"><span class="mode-indicator" aria-hidden="true"></span><strong>私聊仿真</strong><small>私聊换人设，群聊仍二代</small></button>
       </div>
       <div class="row" style="margin-top:12px">
         <label style="flex:1;margin:0">封闭 Agent 使用的 DSH 预设</label>
@@ -1882,8 +1883,9 @@ button:active:not(:disabled) {
         <select id="simPromptPreset" style="flex:0 1 280px">
           <option value="qq-chat-v2">二代仿真（reserved2 · qq-chat-v2）</option>
           <option value="qq-chat">一代仿真（reserved · qq-chat）</option>
+          <option value="qq-chat-personal">私聊仿真（personal · qq-chat-personal）</option>
         </select>
-        <span class="meta">两代机制不同（一代空格分条 / 二代一切皆工具），提示词各自独立。</span>
+        <span class="meta">各预设机制不同（一代空格分条 / 二代与私聊一切皆工具），提示词各自独立。</span>
       </div>
       <div class="meta" id="simPromptWarnings"></div>
       <textarea id="simPromptText" class="code-area" spellcheck="false" readonly></textarea>
@@ -1999,11 +2001,11 @@ button:active:not(:disabled) {
       <div class="meta">一代仿真模式状态机：观望期按“明确点名 / 小概率”触发进入活跃；活跃期每 10~20 秒批量查看新消息并回应；群聊活跃超过随机上限会主动提示 AI 收尾退场；冷场后大概率回观望、小概率让 AI 试探一句。可手动强制切换状态。</div>
     </div></section>
 <section id="section-social-v2" data-page="social-v2" class="card span-all">
-      <h2>二代仿真模式（reserved2）控制台</h2>
+      <h2>二代/私聊仿真模式（reserved2 / personal）控制台</h2>
       <div class="meta">配置保存后写入 config.json 并热更新；工具开关决定 AI 能调用哪些工具。已接入开关的工具在<b>重启 DSH 后</b>会从工具清单里彻底消失（少一份 schema 就少一份每次请求的 token）；发送类等跨模式共用的工具只在调用时被桥接拒绝，清单不变。</div>
 
       <div class="row" style="margin-top:10px">
-        <label style="flex:1">启用二代模式</label><input type="checkbox" id="v2Enabled" style="width:auto">
+        <label style="flex:1">启用二代/私聊模式</label><input type="checkbox" id="v2Enabled" style="width:auto">
         <label style="flex:1">agentPreset</label><input type="text" id="v2AgentPreset" placeholder="qq-chat-v2" style="max-width:200px">
       </div>
       <div class="row" style="margin-top:6px">
@@ -2038,6 +2040,9 @@ button:active:not(:disabled) {
         <label class="v2-tool-item"><input type="checkbox" data-v2-tool="getForwardMsg"> <span><b>qq_get_forward_msg</b><span class="meta">查看当前会话收到的合并转发消息内容</span></span></label>
         <label class="v2-tool-item"><input type="checkbox" data-v2-tool="getActiveMembers"> <span><b>qq_get_active_members</b><span class="meta">查看最近活跃成员列表</span></span></label>
         <label class="v2-tool-item"><input type="checkbox" data-v2-tool="setWakeConfig"> <span><b>qq_set_wake_config</b><span class="meta">设置唤醒/潜水条件：无限期、有限时间、@/名字/关键词/概率等</span></span></label>
+        <label class="v2-tool-item"><input type="checkbox" data-v2-tool="scheduleTask"> <span><b>qq_schedule_task</b><span class="meta">创建定时提醒任务：到点唤醒 AI 并带回提醒内容</span></span></label>
+        <label class="v2-tool-item"><input type="checkbox" data-v2-tool="listScheduledTasks"> <span><b>qq_list_scheduled_tasks</b><span class="meta">查看当前会话的全部定时提醒任务</span></span></label>
+        <label class="v2-tool-item"><input type="checkbox" data-v2-tool="cancelScheduledTask"> <span><b>qq_cancel_scheduled_task</b><span class="meta">取消一个待触发的定时提醒任务</span></span></label>
         <label class="v2-tool-item"><input type="checkbox" data-v2-tool="markRead"> <span><b>qq_mark_read</b><span class="meta">标记当前未读为已读（看过但决定不回复）</span></span></label>
         <label class="v2-tool-item"><input type="checkbox" data-v2-tool="memory"> <span><b>qq_memory_append / qq_memory_query</b><span class="meta">轻量记忆：话题/想说的话/群友印象</span></span></label>
         <label class="v2-tool-item"><input type="checkbox" data-v2-tool="slangQuery"> <span><b>qq_slang_query</b><span class="meta">查询已确认黑话/梗/网络表达</span></span></label>
@@ -2204,6 +2209,11 @@ button:active:not(:disabled) {
       <div class="row">
         <label style="flex:1">收藏备注最大字数</label><input type="number" id="v2StickerCollectRemarkMax" min="1" max="50" style="width:80px">
         <span class="meta" style="flex:2">AI 收藏别人表情时写的简短备注长度上限。</span>
+      </div>
+      <div class="row">
+        <button id="nekowhaleSyncBtn" class="small">导入大肥鱼表情包</button>
+        <span class="meta" style="flex:3">导入 DSH 插件 dsh-nekowhale-stickers 的表情（含逐张情绪/场景标注）到本地表情库；启动时会自动导入，AI 用 qq_list_stickers / qq_send_sticker 即可搜索发送。</span>
+        <span class="meta" id="nekowhaleSyncMsg"></span>
       </div>
 
       </div></details>
@@ -2540,7 +2550,7 @@ button:active:not(:disabled) {
     </section>
 <section id="section-notify" data-page="operations" class="card span-all">
       <h2>后台控制端引导</h2>
-      <div class="meta">直接向指定 QQ 会话的 DSH agent 投递一条“后台控制端提醒”，用于给 AI 引导/提醒；该消息不是群友消息。二代模式（reserved2）下会自动附带会话令牌和二代工具协议说明，AI 的文本输出不会自动转发，发言需通过发送工具。</div>
+      <div class="meta">直接向指定 QQ 会话的 DSH agent 投递一条“后台控制端提醒”，用于给 AI 引导/提醒；该消息不是群友消息。二代/私聊模式（reserved2 / personal）下会自动附带会话令牌和二代工具协议说明，AI 的文本输出不会自动转发，发言需通过发送工具。</div>
       <div class="row" style="margin-top:10px">
         <select id="aiNotifyKind" style="width:110px">
           <option value="group">群</option>
@@ -2729,7 +2739,7 @@ async function refresh() {
     document.querySelectorAll('#modeRow button').forEach(b => (b.classList.toggle('active', b.dataset.mode === s.mode), b.setAttribute('aria-pressed', String(b.dataset.mode === s.mode))));
     document.getElementById('roleText').textContent = s.role || '无';
     document.getElementById('roleModeText').textContent = s.roleMode === 'silent' ? '静默' : '正常';
-    const modeLabel = s.mode === 'reserved' ? '一代仿真模式' : s.mode === 'reserved2' ? '二代仿真模式' : s.mode === 'closed-agent' ? '封闭 Agent' : '聊天模式';
+    const modeLabel = s.mode === 'reserved' ? '一代仿真模式' : s.mode === 'reserved2' ? '二代仿真模式' : s.mode === 'personal' ? '私聊仿真模式' : s.mode === 'closed-agent' ? '封闭 Agent' : '聊天模式';
     updateOverview(s, modeLabel);
     document.getElementById('activity').textContent = s.activity || '（空）';
     const presetSel = document.getElementById('closedPreset');
@@ -3897,6 +3907,26 @@ document.getElementById('v2ToolLogLoad').addEventListener('click', async () => {
   const msg = document.getElementById('v2ToolLogMsg');
   msg.textContent = '';
   await loadV2ToolLog();
+});
+// 导入大肥鱼表情包（DSH 插件 dsh-nekowhale-stickers）到本地表情库
+document.getElementById('nekowhaleSyncBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('nekowhaleSyncBtn');
+  const msg = document.getElementById('nekowhaleSyncMsg');
+  btn.disabled = true;
+  msg.textContent = '导入中…';
+  msg.className = 'meta';
+  try {
+    const r = await api('/api/stickers/nekowhale-sync', 'POST', {});
+    msg.textContent = r.ok
+      ? `✅ 新增 ${r.added} / 更新 ${r.updated} / 移除 ${r.removed}，本地库共 ${r.entries} 条`
+      : ('❌ ' + (r.error || '失败'));
+    msg.className = r.ok ? 'meta ok' : 'meta err';
+  } catch (e) {
+    msg.textContent = '❌ ' + (e?.message || e);
+    msg.className = 'meta err';
+  } finally {
+    btn.disabled = false;
+  }
 });
 document.getElementById('v2ToolLogClear').addEventListener('click', async () => {
   if (!confirm('确定清空全部工具调用日志？')) return;

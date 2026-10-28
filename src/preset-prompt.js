@@ -37,11 +37,29 @@ export const PRESET_BLOCKING_SUBSTRINGS_V1 = [
   'API 令牌',
   '角色扮演由系统注入',
 ];
+// 私聊仿真（qq-chat-personal）：与二代同一安全边界，但文案以「对方」称呼私聊对象
+//（私聊里没有"群友"）。清单必须与预设实际文案一致，否则控制台会锁死这个预设的保存/还原。
+export const PRESET_BLOCKING_SUBSTRINGS_PERSONAL = [
+  '你没有本地工具',
+  '对方没有管理权限',
+  'API 令牌',
+  '角色由桥接注入',
+  '不会自动发送到 QQ',
+];
 export const PRESET_MIN_BODY_CHARS = 500;
 
 /** 取某个预设对应的硬性不变量清单（未知预设按更严的二代替处理）。 */
 export function presetBlockingSubstrings(preset = 'v2') {
-  return preset === 'v1' ? PRESET_BLOCKING_SUBSTRINGS_V1 : PRESET_BLOCKING_SUBSTRINGS;
+  if (preset === 'v1') return PRESET_BLOCKING_SUBSTRINGS_V1;
+  if (preset === 'personal') return PRESET_BLOCKING_SUBSTRINGS_PERSONAL;
+  return PRESET_BLOCKING_SUBSTRINGS;
+}
+
+/** 预设名 → 代次（决定用哪一套硬性不变量）：qq-chat → v1，qq-chat-personal → personal，其余 → v2。 */
+export function presetGeneration(presetName) {
+  if (presetName === 'qq-chat') return 'v1';
+  if (presetName === 'qq-chat-personal') return 'personal';
+  return 'v2';
 }
 
 /** 硬性校验：返回阻止保存的原因列表（空数组=可保存）。preset 取 'v1' / 'v2'。 */
@@ -123,7 +141,7 @@ export function presetPromptWarnings(content) {
  * 用 |-（literal + strip）与原文 >-（folded + strip）在"结尾不留多余换行"上保持一致。
  * @param {string} text 原 YAML 全文
  * @param {string} content 新的提示词正文
- * @param {'v1'|'v2'} preset 预设代次（决定用哪一套硬性不变量）
+ * @param {'v1'|'v2'|'personal'} preset 预设代次（决定用哪一套硬性不变量）
  * @returns {string} 新的 YAML 全文
  */
 export function renderPresetPromptYaml(text, content, preset = 'v2') {

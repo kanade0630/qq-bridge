@@ -53,7 +53,7 @@
 
    脚本会完成：
 
-   - 安装 agent preset：通过 `plugins/qq-agent-presets` 这个 DSH bundle 把 `qq-chat` / `qq-chat-v2` 两条 `@deepseek-ai/dsh-agent-preset` 行插入 profile（DSH 0.1.7 起 preset **不再是** `~/.dsh/.agent-presets/<名>/` 目录，该目录完全不被读取）。patch 由 `scripts/build-agent-preset-patches.mjs` 从 `dsh/agent-presets/` 的权威源生成
+   - 安装 agent preset：通过 `plugins/qq-agent-presets` 这个 DSH bundle 把 `qq-chat` / `qq-chat-v2` / `qq-chat-personal` 三条 `@deepseek-ai/dsh-agent-preset` 行插入 profile（DSH 0.1.7 起 preset **不再是** `~/.dsh/.agent-presets/<名>/` 目录，该目录完全不被读取）。patch 由 `scripts/build-agent-preset-patches.mjs` 从 `dsh/agent-presets/` 的权威源生成
    - 在 `~/.dsh/profiles/web/cordis.patch.yml` 挂载：
      - `mcp-snowluma`（`src/mcp-snowluma-safe.js`，带 `toolCallTimeoutMs: 725000`）
      - `mcp-snowluma-host`（`src/mcp-host-server.js`）
@@ -78,20 +78,21 @@
 
    必须重启 DSH（或让 DSH 重新加载 profile），新 preset 和 MCP 工具才会生效。
 
-   > 默认模式为 **`reserved2`（二代仿真）**，即“文本不自动转发、AI 通过工具自主收发”。如果你想改用 `chat` / `closed-agent` / `reserved`，在**桥接控制台**（默认 `http://127.0.0.1:3100`）顶部按钮切换即可 —— 桥接会同时写入 DSH 设置与本地 `state/mode.json`，**无需重启**（每 5 秒轮询即时生效）。本地文件保存模式兜底与 `closedAgentPreset`；正常情况下模式以 DSH 设置为准，请通过控制台切换。
+   > 默认模式为 **`reserved2`（二代仿真）**，即“文本不自动转发、AI 通过工具自主收发”。如果你想改用 `chat` / `closed-agent` / `reserved` / `personal`（私聊仿真：私聊挂 `qq-chat-personal`，群聊仍二代），在**桥接控制台**（默认 `http://127.0.0.1:3100`）顶部按钮切换即可 —— 桥接会同时写入 DSH 设置与本地 `state/mode.json`，**无需重启**（每 5 秒轮询即时生效）。本地文件保存模式兜底与 `closedAgentPreset`；正常情况下模式以 DSH 设置为准，请通过控制台切换。
 
 ## 验证是否装好
 
-离线安全回归：`node scripts/test-audit-setup.mjs` 与 `node scripts/test-audit-setup-guards.mjs`。后者直接执行两套 preset 的限制插件，验证本地工具、未声明工具与裸 `web_fetch` / `web_search` 被拒绝，而带 SSRF 防护的 `mcp__web-search-safe__*` 仍然可用。更新 preset 后需重新运行安装脚本并重启 DSH，现有 DSH 安装中的旧副本才会更新。
+离线安全回归：`node scripts/test-audit-setup.mjs` 与 `node scripts/test-audit-setup-guards.mjs`。后者直接执行三套 preset 的限制插件，验证本地工具、未声明工具与裸 `web_fetch` / `web_search` 被拒绝，而带 SSRF 防护的 `mcp__web-search-safe__*` 仍然可用。更新 preset 后需重新运行安装脚本并重启 DSH，现有 DSH 安装中的旧副本才会更新。
 
 0. **一键自检**：`npm run verify:adaptation` —— 覆盖 preset persona schema、bundle patch 与工具守卫、版本身份一致性、preset fail-closed 护栏，以及**运行中的 DSH 0.2.0 实测**（`qq-mode` 命名空间可列可写、`session/projections`、`session/control` 的 `projections` 形状、`stopSessionWork` 退役会话、`$events` ready 帧、`session/modelCatalog`、点号 endpoint 仍 404）等共 65 项断言。
    > 若你的环境禁止起子进程（例如在 DSH 的沙箱会话里跑），脚本内那批 `node --check` 语法检查会被**显式记为跳过**（`⏭`）而不是报假失败 —— 请在普通终端重跑以覆盖它们。
-1. **切换桥接模式**：打开桥接控制台（默认 `http://127.0.0.1:3100`），顶部的「聊天模式 / 封闭 Agent / 一代仿真模式 / 二代仿真模式」按钮即为当前生效的切换入口。控制台会同时写入 DSH 设置与本地 `state/mode.json`。
+1. **切换桥接模式**：打开桥接控制台（默认 `http://127.0.0.1:3100`），顶部的「聊天模式 / 封闭 Agent / 一代仿真模式 / 二代仿真模式 / 私聊仿真模式」按钮即为当前生效的切换入口。控制台会同时写入 DSH 设置与本地 `state/mode.json`。
    > ℹ️ DSH 设置页 `Plugins → Plugin configuration` 里**不会**出现 `qq-mode` 卡片：该槽位要求插件自带浏览器半（`package.json` 的 `dsh.client` + `lib/client.js`），而 `plugins/qq-mode-console` 只实现了 host 半。`qq-mode` 命名空间本身**可用**（`settings/describe` 能列出、`settings/update` 能写成功），缺的只是那张 GUI 表单 —— 所以模式改走控制台。参见下方「常见问题」。
    > DSH 0.2.0 起命名空间**不再需要任何注册调用**：它由 profile 里 `id: qq-mode` 那条 loader entry + 插件导出的 `Config`（带 `volatile` 字段）推导出来。0.1.x 的 `ctx.settings.register()` 已被 DSH 删除。
 2. **新建会话时**：agent preset 列表中应能看到：
    - `QQ 聊天角色`（`qq-chat`）
    - `QQ 聊天角色（二代仿真）`（`qq-chat-v2`）
+   - `QQ 聊天角色（私聊仿真）`（`qq-chat-personal`）
 3. **工具列表**：QQ 会话中应能看到 `mcp__snowluma__*`、`mcp__snowluma-host__*`、`mcp__web-search-safe__*` 等工具；不应看到 `dev_*` 等开发工具。
 
 ## 常见问题

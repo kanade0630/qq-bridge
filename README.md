@@ -79,6 +79,7 @@ QQ 消息 ──► SnowLuma（OneBot v11 WS）──► 本桥接进程 ──�
   - `closed-agent`：仅私聊 owner（config.json 的 ownerQQ，可在控制台设置）→ 完整工具（默认用 DSH 自己声明的默认 preset，即 `standard`；可在控制台「closed-agent preset」下拉改为任意 DSH preset），可在 QQ 上操控 DSH
   - `reserved`（一代仿真）：仿真群友，观望/活跃/试探/退场状态机，选择性参与、按空格分句发送、主动收尾
   - `reserved2`（二代仿真，运行 `setup-dsh.mjs` 后 DSH 默认）：文本不自动转发，AI 通过 `qq_get_unread_messages` / `qq_send_message` 等工具自主看消息、发言、等待、设置唤醒/潜水；DSH 端使用 `qq-chat-v2` preset
+  - `personal`（私聊仿真）：二代机制 + 私聊人设，**按会话类型分流**——私聊会话挂 `qq-chat-personal`（私聊专用提示词：任何私聊消息默认唤醒、无沉睡前观察、隐私不外流、防助理化），群聊会话继续挂 `qq-chat-v2` 与二代仿真行为完全一致；工具面/安全边界与二代相同（无本地工具）
 - **交互增强**：
   - agent 通过 `ask_user_question` 提问时，问题会转发到 QQ，回复即自动应答
   - agent 请求工具审批时，转发到 QQ，回复「通过」/「拒绝」即可决策
@@ -122,6 +123,9 @@ npm install        # 安装依赖（postinstall 会自动修补 @snowluma/sdk �
 | `snowluma.launcherPath` / `homeDir` | SnowLuma 安装目录（用于 token/端点自发现）。⚠️ 桥接**不会**启动或停止 SnowLuma（见 `LICENSE`） |
 | `agentPreset` | QQ 会话使用的 DSH agent preset，默认 `qq-chat`（改性格见下文） |
 | `socialV2.agentPreset` | `reserved2` 模式使用的 DSH agent preset，默认 `qq-chat-v2` |
+| `socialPersonal.agentPreset` | `personal` 模式下**私聊会话**使用的 DSH agent preset，默认 `qq-chat-personal`（群聊会话仍用 `socialV2.agentPreset`） |
+| `socialPersonal.preSleepWaitMs` | `personal` 模式私聊会话的收尾观察窗口（毫秒），默认 `120000`（2 分钟，对齐私聊预设「60~120 秒即可收尾」）；群聊会话仍用 `socialV2.wake.preSleepWaitMs`（默认 5 分钟） |
+| `nekowhaleStickers.enabled` / `baseUrl` | 是否把 DSH 插件 `dsh-nekowhale-stickers`（大肥鱼表情包，322 张，含逐张情绪/场景标注）导入本地表情库（启动时自动 + 控制台「表情包参数」里可手动刷新）；图片按 `baseUrl`（默认 `https://kiriyuki.com`）的内容寻址直链下载，发送走现有 `qq_send_sticker` 链路。导入条目 `source=manual`，QQ 收藏的全量同步不会清除它们 |
 | `socialV2.initialPromptMaxChars` | 会话「初始提示词」（控制台为某个群/私聊预写的环境说明）的字数上限，默认 2000，允许 100~8000。越界值会在启动时收敛并保持原文件不动 |
 | `socialV2.media` | 图片/表情的上限：`maxBytes`（单条消息总字节，默认 8MB）、`maxPixels`（单张像素，默认 64MP）、`maxCount`（单条最多处理几张，默认 5）。越界值启动时收敛 |
 | `webSearch.provider` | 联网搜索后端：`auto`（默认，优先 DeepSeek、失败回退 Bing）/ `deepseek`（仅 DeepSeek，无凭据时报错）/ `bing` |

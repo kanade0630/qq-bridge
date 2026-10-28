@@ -295,3 +295,87 @@ export function markStickerUsed(entries, id, context = '') {
   list[idx] = next;
   return { entries: list, entry: next };
 }
+
+// ── dsh-nekowhale-stickers（DSH 插件「大肥鱼表情包」）导入 ─────────────────────
+//
+// 插件的数据分两份，都在其本地数据目录（~/.dsh/nekowhale-stickers/）：
+//   manifest.json            图片索引：每张的 drag_url（内容寻址直链，宿主 kiriyuki.com，
+//                            实测可直接下载）+ pack/name/bytes 等
+//   cache/meme/kit/nekowhale.json（= 插件包 meta/nekowhale.json）
+//                            逐张人工标注：emotion（情绪）/ tags（场景）/ use（何时用）/ desc（画面）
+// 两者按条目 id（"大肥鱼/10N01_猫猫搓手"）关联后映射成本地表情条目。
+//
+// 与 QQ 收藏同步的共存约定：
+// - 导入条目 source='manual'：mergeStickerLibrary 的清理规则只删「source==='qq' 且不在
+//   QQ 收藏清单里」的条目，因此 QQ 侧全量同步永远不会误删这批表情；
+// - 本函数也只增删改带 NEKOWHALE_ID_PREFIX 前缀的条目，其他来源一概不动；
+// - AI 的学习成果（localNote/useCount/lastUsedAt/lastContext）在重复导入时原样保留。
+
+export const NEKOWHALE_ID_PREFIX = 'nekowhale:';
+
+/**
+ * 把插件的 manifest（图片 URL）与 meta（情绪/场景标注）合并进本地表情库。
+ * 幂等：可重复调用；远端已下架的条目会被移除（发不出图的死条目没有保留价值）。
+ * @param {object[]} existing 现有表情库
+ * @param {object} manifest 插件 manifest.json（顶层含 items 数组）
+ * @param {object[]|object} meta 标注（数组或顶层含 items/stickers 数组的对象）
+ * @param {object} options
+ * @param {string} options.baseUrl drag_url 的拼 URL 前缀（默认 kiriyuki.com，实测可直链下载）
+ * @param {number} options.maxBytes 单张体积上限，超过则跳过（发送链路 safeFetchBuffer 有同样上限，导入也发不出去）
+ * @returns {{entries: object[], added: number, updated: number, removed: number, skipped: number, total: number}}
+ */
+export function mergeNekowhaleStickers(existing, { manifest, meta, baseUrl = 'https://kiriyuki.com', maxBytes = Infinity } = {}) {
+  const list = (Array.isArray(existing) ? existing : []).map(normalizeStickerEntry).filter(Boolean);
+  const items = Array.isArray(manifest?.items) ? manifest.items : [];
+  const metaList = Array.isArray(meta)
+    ? meta
+    : (Array.isArray(meta?.items) ? meta.items : (Array.isArray(meta?.stickers) ? meta.stickers : []));
+  const metaById = new Map(metaList.filter((m) => m && typeof m === 'object' && m.id).map((m) => [String(m.id), m]));
+  const base = String(baseUrl ?? '').trim().replace(/\/+$/, '');
+
+  const keepIds = new Set();
+  let added = 0;
+  let updated = 0;
+  let removed = 0;
+  let skipped = 0;
+  for (const item of items) {
+    if (!item || typeof item !== 'object' || !item.id) { skipped += 1; continue; }
+    const drag = String(item.drag_url || '').trim();
+    // drag_url 必须是站内相对路径（"/media/..."）；完整 URL / 协议相对都拒绝，
+    // 防止被篡改的 manifest 把表情指到别的域（本函数不校验目标域，那交给发送时的 SSRF 防护）。
+    if (!drag.startsWith('/') || drag.startsWith('//')) { skipped += 1; continue; }
+    const bytes = Number(item.bytes) || 0;
+    if (bytes > maxBytes) { skipped += 1; continue; }
+    const annotation = metaById.get(String(item.id)) ?? {};
+    const id = NEKOWHALE_ID_PREFIX + String(item.id);
+    keepIds.add(id);
+    const oldIdx = list.findIndex((e) => e.id === id);
+    const old = oldIdx >= 0 ? list[oldIdx] : null;
+    const entry = normalizeStickerEntry({
+      ...(old || {}),
+      id,
+      resId: id,
+      url: `${base}${drag}`,
+      md5: '', // 插件的 hash 不是 MD5，不冒充；查找靠 id/desc/tags 已足够
+      desc: sanitizeStickerText(item.name ?? annotation.desc ?? '', 200),
+      localNote: old?.localNote || '',
+      tags: [annotation.emotion, ...(Array.isArray(annotation.tags) ? annotation.tags : [])]
+        .map((t) => sanitizeStickerText(t, 24)).filter(Boolean),
+      usage: sanitizeStickerText(annotation.use ?? '', 200),
+      source: 'manual',
+      useCount: old?.useCount || 0,
+      lastUsedAt: old?.lastUsedAt || 0,
+      lastContext: old?.lastContext || '',
+      createdAt: old?.createdAt || nowIso(),
+      updatedAt: nowIso()
+    });
+    if (!entry) { skipped += 1; continue; }
+    if (old) { list[oldIdx] = entry; updated += 1; }
+    else { list.push(entry); added += 1; }
+  }
+  // 远端已下架（manifest 里消失）的导入条目：移除。只动带前缀的，其他来源一概不碰。
+  const before = list.length;
+  const pruned = list.filter((e) => !e.id.startsWith(NEKOWHALE_ID_PREFIX) || keepIds.has(e.id));
+  removed = before - pruned.length;
+  return { entries: pruned, added, updated, removed, skipped, total: items.length };
+}

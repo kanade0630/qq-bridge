@@ -41,11 +41,11 @@ check('新配置 {prefix, suffix} 通过（含 {{cwd}} 模板）', () => {
   if (v.includeRuntimeContext !== true) throw new Error('includeRuntimeContext 默认值异常');
 });
 
-// 校验仓库里两个 preset 的 persona 配置块
+// 校验仓库里三个 preset 的 persona 配置块
 const YAML = await import(pathToFileURL(path.join(DSH_MODULES, 'js-yaml/index.js')).href);
 const yaml = YAML.default ?? YAML;
 
-for (const preset of ['qq-chat', 'qq-chat-v2']) {
+for (const preset of ['qq-chat', 'qq-chat-v2', 'qq-chat-personal']) {
   const file = path.resolve(process.cwd(), 'dsh/agent-presets', preset, 'agent.cordis.yml');
   console.log(`\n${preset} (${path.relative(process.cwd(), file)}):`);
   const doc = yaml.load(fs.readFileSync(file, 'utf8'));
@@ -56,10 +56,12 @@ for (const preset of ['qq-chat', 'qq-chat-v2']) {
   });
   check('persona.config 通过 DSH schema', () => { persona.Config(row.config); });
   check('保留了 {{model}} 变量', () => {
-    if (!/\{\{model\}\}/.test(row.config.prefix)) throw new Error('prefix 缺少 {{model}}');
+    if (!/\{\{model}\}\}/.test(row.config.prefix)) throw new Error('prefix 缺少 {{model}}');
   });
-  check('保留了 {{cwd}} 变量', () => {
-    if (!/\{\{cwd\}\}/.test(row.config.suffix ?? '')) throw new Error('suffix 缺少 {{cwd}}');
+  // issue #39：{{cwd}} 只在 deployment:persona-suffix 注册，写进 suffix 会让整个回合失败；
+  // 三个 preset 都刻意不设 suffix，这里钉住别再加回去（旧断言「suffix 含 {{cwd}}」已随 #39 过时）。
+  check('按 issue #39 刻意不设 suffix', () => {
+    if (row.config.suffix) throw new Error('不应设置 suffix');
   });
   check('不再包含已废弃的 text 字段', () => {
     if (Object.hasOwn(row.config, 'text')) throw new Error('仍有 text 字段');

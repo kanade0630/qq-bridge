@@ -30,7 +30,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PRESETS_DIR = path.join(ROOT, 'dsh', 'agent-presets');
 
 /** 仿真模式使用的 preset（不允许有任何本地执行能力）。 */
-const SIMULATION_PRESETS = ['qq-chat', 'qq-chat-v2'];
+const SIMULATION_PRESETS = ['qq-chat', 'qq-chat-v2', 'qq-chat-personal'];
 
 /** 封闭 agent 的 preset：按设计**允许**完整本地工具面。 */
 const CLOSED_AGENT_PRESETS = ['qsh-closed'];

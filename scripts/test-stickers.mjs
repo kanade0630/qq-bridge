@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   normalizeStickerEntry,
   mergeStickerLibrary,
+  mergeNekowhaleStickers,
   findSticker,
   formatStickerList,
   buildStickerContext,
@@ -84,6 +85,48 @@ console.log('## sticker-lib 纯函数');
   ok(used.entry.useCount === 1 && used.entry.lastContext === '接梗', 'markStickerUsed 记录使用');
 }
 
+console.log('## dsh-nekowhale-stickers 导入（mergeNekowhaleStickers）');
+{
+  const manifest = { items: [
+    { id: '大肥鱼/1N01_摸鱼', name: '摸鱼', drag_url: '/media/drag/gif/aaa.gif', bytes: 1000 },
+    { id: '大肥鱼/2N01_超大', name: '超大', drag_url: '/media/drag/gif/big.gif', bytes: 99 * 1024 * 1024 },
+    { id: '大肥鱼/3N01_离线', name: '离线', drag_url: 'https://evil.example/x.gif', bytes: 1000 }
+  ] };
+  const meta = [
+    { id: '大肥鱼/1N01_摸鱼', emotion: '开心', tags: ['摸鱼', '划水'], use: '想摸鱼时', desc: '画面描述' }
+  ];
+  // 预置一条旧条目：URL 过期 + AI 学习成果，验证导入刷新 URL 但保留学习字段
+  const existing = [
+    { id: 'nekowhale:大肥鱼/1N01_摸鱼', resId: 'x', url: 'https://old/1.gif', localNote: 'AI 学的笔记', useCount: 3, lastUsedAt: 123, source: 'manual' },
+    { id: 'qqface1', resId: 'qqface1', url: 'https://qq/1.gif', source: 'qq' }
+  ];
+  const r = mergeNekowhaleStickers(existing, { manifest, meta, baseUrl: 'https://kiriyuki.com', maxBytes: 8 * 1024 * 1024 });
+  const byId = new Map(r.entries.map((e) => [e.id, e]));
+  ok(r.added === 0 && r.updated === 1 && r.skipped === 2, `统计正确（added=${r.added} updated=${r.updated} skipped=${r.skipped}）`);
+  const e1 = byId.get('nekowhale:大肥鱼/1N01_摸鱼');
+  ok(e1 && e1.url === 'https://kiriyuki.com/media/drag/gif/aaa.gif' && e1.source === 'manual', 'URL 刷新为内容寻址直链且 source=manual');
+  ok(e1.localNote === 'AI 学的笔记' && e1.useCount === 3 && e1.lastUsedAt === 123, '重复导入保留 AI 学习字段（localNote/useCount/lastUsedAt）');
+  ok(e1.desc === '摸鱼' && e1.tags.includes('开心') && e1.tags.includes('划水') && e1.usage === '想摸鱼时', '标注映射：desc=name、tags 含情绪+场景、usage=use');
+  ok(!byId.has('nekowhale:大肥鱼/2N01_超大') && !byId.has('nekowhale:大肥鱼/3N01_离线'), '超限与外部 URL 的条目被跳过');
+  ok(byId.has('qqface1'), '非 nekowhale 条目不受导入影响');
+  // 关键回归：QQ 收藏全量同步（complete=true，nekowhale 条目不在收藏清单里）不得清除导入条目
+  const afterQqSync = mergeStickerLibrary(r.entries, [
+    { emoji_id: 'qqface1', resId: 'qqface1', url: 'https://qq/1.gif' }
+  ], { complete: true });
+  const afterQqById = new Map(afterQqSync.map((e) => [e.id, e]));
+  ok(afterQqById.has('nekowhale:大肥鱼/1N01_摸鱼'), 'QQ 收藏全量同步不清除 nekowhale 导入条目（source=manual）');
+  ok(!afterQqById.has('qqface1') || afterQqById.get('qqface1'), 'QQ 条目按既有规则保留');
+  // 远端下架清理：manifest 里消失的 nekowhale 条目被移除，其他来源不动
+  const r2 = mergeNekowhaleStickers(r.entries, { manifest: { items: [] }, meta: [], baseUrl: 'https://kiriyuki.com' });
+  const r2ById = new Map(r2.entries.map((e) => [e.id, e]));
+  ok(r2.removed === 1 && !r2ById.has('nekowhale:大肥鱼/1N01_摸鱼'), 'manifest 里消失的导入条目被清理');
+  ok(r2ById.has('qqface1'), '清理只动带前缀的条目');
+  // 无标注 meta 时仍可导入（按 name 搜索）
+  const r3 = mergeNekowhaleStickers([], { manifest, meta: null, baseUrl: 'https://kiriyuki.com', maxBytes: 8 * 1024 * 1024 });
+  const r3e = r3.entries.find((e) => e.id === 'nekowhale:大肥鱼/1N01_摸鱼');
+  ok(r3e && r3e.desc === '摸鱼' && r3e.tags.length === 0 && r3e.usage === '', '标注缺失不致命：desc=name，tags/usage 为空');
+}
+
 console.log('## 配置文件');
 {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
@@ -119,7 +162,7 @@ console.log('## MCP 工具描述存在性');
 console.log('## bridge 路由/函数存在性');
 {
   const bridge = fs.readFileSync(path.join(ROOT, 'src', 'bridge.js'), 'utf8');
-  for (const s of ['/api/socialV2/sticker-list', '/api/socialV2/sticker-image', '/api/socialV2/sticker-note', '/api/socialV2/send-sticker', '/api/socialV2/sticker-remark', '/api/stickers', 'syncStickerLibrary', 'sendStickerV2']) {
+  for (const s of ['/api/socialV2/sticker-list', '/api/socialV2/sticker-image', '/api/socialV2/sticker-note', '/api/socialV2/send-sticker', '/api/socialV2/sticker-remark', '/api/stickers', '/api/stickers/nekowhale-sync', 'syncStickerLibrary', 'sendStickerV2', 'syncNekowhaleStickers']) {
     ok(bridge.includes(s), `bridge 包含 ${s}`);
   }
 }

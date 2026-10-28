@@ -196,7 +196,7 @@ export async function bridgeHarness({ config = {}, savedState, files = {}, globa
   vm.runInContext(`Object.assign(globalThis, (() => { ${modelViewSource}\nreturn { compactModelMessage, compactModelData, serializeModelData }; })());`, context);
   vm.runInContext(source + '\nglobalThis.auditReady = main();', context);
   const bridge = await context.auditReady;
-  bridge.setPresets(['standard', 'qq-chat', 'qq-chat-v2']);
+  bridge.setPresets(['standard', 'qq-chat', 'qq-chat-v2', 'qq-chat-personal']);
   bridge.setReady(true);
   return { ...bridge, calls, temp, async close() {
     for (const timer of timers) clearTimeout(timer);

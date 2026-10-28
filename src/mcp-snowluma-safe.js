@@ -314,6 +314,9 @@ const TOOL_CONFIG_FLAGS = {
   qq_social_state: 'socialState',
   qq_mark_read: 'markRead',
   qq_set_wake_config: 'setWakeConfig',
+  qq_schedule_task: 'scheduleTask',
+  qq_list_scheduled_tasks: 'listScheduledTasks',
+  qq_cancel_scheduled_task: 'cancelScheduledTask',
   qq_send_burst: 'sendBurst',
   qq_send_message: 'sendMessage',
   qq_wait_for_messages: 'waitMessages',
@@ -646,6 +649,62 @@ server.tool(
       return { content: [{ type: 'text', text: serializeModelData(data) }] };
     } catch (error) {
       return { content: [{ type: 'text', text: `设置唤醒配置失败：${error?.message ?? error}` }], isError: true };
+    }
+  }
+);
+
+server.tool(
+  'qq_schedule_task',
+  '创建定时提醒任务（闹钟）：到点后桥接会唤醒你并把 note 内容带回唤醒提示，由你自行决定发什么消息（不会替你自动发送）。适合「30 分钟后提醒我在群里发照片」「明晚 8 点提醒我催大家报名」这类场景。与 qq_set_wake_config 的潜水闹钟不同：定时任务无论当前是否潜水都会按时唤醒，且多个任务可并存。repeat 支持 daily/weekly 循环。返回的 taskId 用于后续取消。',
+  {
+    key: z.string().describe('会话 key，格式 group:群号 或 private:QQ号'),
+    token: z.string().describe('会话令牌（见唤醒提示中的【会话令牌】）'),
+    fireAt: z.string().optional().describe('触发时间 ISO 字符串（如 2026-10-21T18:30:00+08:00），与 delayMs 二选一'),
+    delayMs: z.number().optional().describe('距离现在的毫秒数（如 30 分钟 = 1800000），与 fireAt 二选一'),
+    note: z.string().describe('提醒内容：写清楚到点要做什么，触发时会原样带回给你（最长 500 字）'),
+    repeat: z.enum(['none', 'daily', 'weekly']).optional().describe('重复周期，默认 none（只触发一次）')
+  },
+  async ({ key, token, fireAt, delayMs, note, repeat }) => {
+    try {
+      const data = await agentApi('/api/socialV2/schedule-task', { method: 'POST', body: JSON.stringify({ key, fireAt, delayMs, note, repeat }), headers: { 'x-agent-token': token } });
+      return { content: [{ type: 'text', text: serializeModelData(data) }] };
+    } catch (error) {
+      return { content: [{ type: 'text', text: `创建定时任务失败：${error?.message ?? error}` }], isError: true };
+    }
+  }
+);
+
+server.tool(
+  'qq_list_scheduled_tasks',
+  '列出当前会话的全部定时提醒任务（含待触发/已触发/已取消），按创建时间倒序。可用来查看有哪些待办提醒、确认定时任务是否设置成功。',
+  {
+    key: z.string().describe('会话 key，格式 group:群号 或 private:QQ号'),
+    token: z.string().describe('会话令牌（见唤醒提示中的【会话令牌】）')
+  },
+  async ({ key, token }) => {
+    try {
+      const data = await agentApi(`/api/socialV2/scheduled-tasks?key=${encodeURIComponent(key)}`, { method: 'GET', headers: { 'x-agent-token': token } });
+      return { content: [{ type: 'text', text: serializeModelData(data) }] };
+    } catch (error) {
+      return { content: [{ type: 'text', text: `查询定时任务失败：${error?.message ?? error}` }], isError: true };
+    }
+  }
+);
+
+server.tool(
+  'qq_cancel_scheduled_task',
+  '取消一个待触发的定时提醒任务（taskId 见 qq_schedule_task 的返回或 qq_list_scheduled_tasks 的列表）。已触发或已取消的任务无法再取消。',
+  {
+    key: z.string().describe('会话 key，格式 group:群号 或 private:QQ号'),
+    token: z.string().describe('会话令牌（见唤醒提示中的【会话令牌】）'),
+    taskId: z.string().describe('要取消的任务 id（task_ 开头）')
+  },
+  async ({ key, token, taskId }) => {
+    try {
+      const data = await agentApi('/api/socialV2/cancel-scheduled-task', { method: 'POST', body: JSON.stringify({ key, taskId }), headers: { 'x-agent-token': token } });
+      return { content: [{ type: 'text', text: serializeModelData(data) }] };
+    } catch (error) {
+      return { content: [{ type: 'text', text: `取消定时任务失败：${error?.message ?? error}` }], isError: true };
     }
   }
 );

@@ -115,7 +115,7 @@ if (!depOk) failed += 1;
 
 // 断言 6：DSH 0.1.7 机制 —— preset 由 qq-agent-presets bundle 的 patch 层装配，
 // 旧目录 ~/.dsh/.agent-presets 不再写入（也不删除用户数据）。
-for (const p of ['qq-chat', 'qq-chat-v2']) {
+for (const p of ['qq-chat', 'qq-chat-v2', 'qq-chat-personal']) {
   const patchFile = path.join(ROOT, 'plugins', 'qq-agent-presets', 'presets', `${p}.patch.yml`);
   const text = fs.existsSync(patchFile) ? fs.readFileSync(patchFile, 'utf8') : '';
   const ok = text.includes('@deepseek-ai/dsh-agent-preset') && new RegExp(`^\\s+id: ${p}$`, 'm').test(text);
